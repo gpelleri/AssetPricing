@@ -2,9 +2,8 @@ import math
 import numpy as np
 
 """ 
-Price an option by the binomial CRR model 
+Price an option by the binomial tree model. This class serves as a base for other types of trees such as CRR tree
 """
-# TODO : WIP - better to make it without using a class ? straight functions might be better
 
 
 class BinomialTreeOption(object):
@@ -23,10 +22,8 @@ class BinomialTreeOption(object):
         :param pu: probability at up state
         :param pd: probability at down state
         :param div: Dividend yield
-        :param is_put: True for a put option,
-                False for a call option
-        :param is_am: True for an American option,
-                False for a European option
+        :param is_put: True for a put option
+        :param is_am: True for an American option
         """
         self.S0 = S0
         self.K = K
@@ -35,7 +32,7 @@ class BinomialTreeOption(object):
         self.N = max(1, N)
         self.STs = []  # Declare the stock prices tree
 
-        """ Optional parameters used by derived classes """
+        """ Optional parameters used by child classes """
         self.pu = pu
         self.pd = pd
         self.div = div

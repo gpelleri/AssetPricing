@@ -1,3 +1,5 @@
+# TODO TESTER ET LINKER
+
 def implied_volatility_call(C, S, K, T, r, q, tol=0.0001,
                             max_iterations=100):
     """"
