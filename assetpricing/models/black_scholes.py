@@ -1,26 +1,23 @@
 import numpy as np
-
 from scipy.stats import norm
 
-from assetpricing.products.equity.vanilla_option import VanillaOption
-from assetpricing.products.equity.stock import Stock
-from assetpricing.utils.types import SecurityType, OptionTypes, BlackScholesTypes
+from assetpricing.utils.types import OptionTypes, BlackScholesTypes
 
 
 # This class implements Black & Scholes & Merton model
 
 
 class BlackScholes():
-    def __init__(self, implementationType, volatility):
+    def __init__(self, implementationType):
         self._implementationType = implementationType
-        self._volatility = volatility
 
     def value(self,
               spotPrice: float,
-              time_to_expiry: float,
               strike_price: float,
               risk_free_rate: float,
+              time_to_expiry: float,
               dividendRate: float,
+              volatility: float,
               option_type: OptionTypes):
 
         if option_type == OptionTypes.EUROPEAN_CALL or option_type == OptionTypes.EUROPEAN_PUT:
@@ -31,21 +28,21 @@ class BlackScholes():
             if self._implementationType == BlackScholesTypes.ANALYTICAL:
 
                 v = bs_value(spotPrice,
-                             time_to_expiry,
                              strike_price,
                              risk_free_rate,
+                             time_to_expiry,
                              dividendRate,
-                             self._volatility,
+                             volatility,
                              option_type.value)
 
                 return v
 
             elif self._implementationType == BlackScholesTypes.BINOM_TREE:
-
+            # TODO IMPLEMENTER + TEST
                 v = 0
 
             elif self._implementationType == BlackScholesTypes.CRR_TREE:
-
+            # TODO IMPLEMENTER + TEST
                 v = 0
                 # crr_tree_val_avg(spotPrice,
                 #                      risk_free_rate,
@@ -67,6 +64,7 @@ class BlackScholes():
             if self._implementationType is BlackScholesTypes.DEFAULT:
                 self._implementationType = BlackScholesTypes.CRR_TREE
 
+        # TODO IMPLEMENTER
         else:
 
             raise Exception("Wrong option type")
@@ -87,9 +85,9 @@ def bs_value(S, K, r, T, q, sigma, option_type):
     d1 = 1 / (sigma * np.sqrt(T)) * (np.log(S / K) + (r - q + sigma ** 2 / 2) * T)
     d2 = d1 - sigma * np.sqrt(T)
     # return based on optionType param
-    if option_type == OptionTypes.EUROPEAN_CALL:
+    if option_type == OptionTypes.EUROPEAN_CALL.value:
         phi = 1.0
-    elif option_type == OptionTypes.EUROPEAN_PUT:
+    elif option_type == OptionTypes.EUROPEAN_PUT.value:
         phi = -1.0
     else:
         print('Wrong option type specified')
@@ -201,24 +199,3 @@ def bs_rho(S, K, r, T, q, sigma, option_type):
     return rho
 
 
-if __name__ == '__main__':
-    r = 0.05  # risk-free risk in annual %
-    q = 0.02  # annual dividend rate
-    # sigma = 0.25  # annual volatility in %
-    # steps = 100  # time steps
-
-    # TODO : too much verbose ? Create a constructor with Option as parameter ?
-    # TODO Either we make models class based or parameter based
-    # TODO : just allow direct access to underlying method ?
-    edf = Stock("EDF", True, 100, 0.25, 0.02)
-    # edf_call = Option("EDF-call", 0.5, edf, 110)
-    edf_call = VanillaOption("EDF-call", 0.5, edf, 110, OptionTypes.EUROPEAN_CALL)
-    temp = bs_value(edf_call.getUnderlying().getPrice(),
-                    edf_call.getStrike(),
-                    r,
-                    edf_call.getExpiry(),
-                    edf_call.getUnderlying().getDiv(),
-                    edf_call.getUnderlying().getVol(),
-                    edf_call.getOptionType())
-    print(temp)
-    # print(bs_value(100, 110, r, 1 / 2, q, 0.25, OptionTypes.EUROPEAN_CALL))

@@ -19,5 +19,9 @@ class Security:
         return self.type
 
     def getPrice(self):
+        """
+        Return SECURITY PRICE ! This doesn't return underlying price in case of a derivatives !
+        :return: security price
+        """
         return self.price
 
