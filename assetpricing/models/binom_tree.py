@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from assetpricing.utils.types import *
 
 """ 
 Price an option by the binomial tree model. This class serves as a base for other types of trees such as CRR tree
@@ -8,8 +9,7 @@ Price an option by the binomial tree model. This class serves as a base for othe
 
 class BinomialTreeOption(object):
     def __init__(
-            self, S0, K, r=0.05, T=1, N=2, pu=0.0, pd=0.0,
-            div=0, sigma=0, is_put=False, is_am=False):
+            self, S0, K, r, T, N, div=0, sigma=0, pu=0.5, pd=0.5, option_type=OptionTypes.EUROPEAN_CALL):
         """
         Initialize the tree base class.
         Defaults to European call unless specified.
@@ -19,11 +19,11 @@ class BinomialTreeOption(object):
         :param r: risk-free interest rate
         :param T: time to maturity
         :param N: number of time steps
+        :param div: dividend yield
+        :param div: Dividend yield
         :param pu: probability at up state
         :param pd: probability at down state
-        :param div: Dividend yield
-        :param is_put: True for a put option
-        :param is_am: True for an American option
+        :param option_type: tree option type
         """
         self.S0 = S0
         self.K = K
@@ -37,8 +37,14 @@ class BinomialTreeOption(object):
         self.pd = pd
         self.div = div
         self.sigma = sigma
-        self.is_call = not is_put
-        self.is_european = not is_am
+        if option_type.value == OptionTypes.EUROPEAN_PUT.value or option_type.value == OptionTypes.AMERICAN_PUT.value:
+            self.is_call = False
+        else:
+            self.is_call = True
+        if option_type.value == OptionTypes.EUROPEAN_PUT.value or option_type.value == OptionTypes.EUROPEAN_CALL.value:
+            self.is_european = True
+        else:
+            self.is_european = False
 
         self.setup_parameters()
 
@@ -106,10 +112,4 @@ class BinomialTreeOption(object):
         payoffs = self.begin_tree_traversal()
         return payoffs[0]
 
-
-# if __name__ == '__main__':
-#     am_option = BinomialTreeOption(50, 52,
-#                                    r=0.05, T=2, N=2, pu=0.2, pd=0.2, is_put=True, is_am=True)
-#
-#     print("American put option price is:", am_option.price())
 

@@ -1,15 +1,28 @@
 import numpy as np
 from scipy.stats import norm
 
+from assetpricing.models.binom_tree import BinomialTreeOption
+from assetpricing.models.crr_tree import CRRTreeOption
 from assetpricing.utils.types import OptionTypes, BlackScholesTypes
 
-
-# This class implements Black & Scholes & Merton model
+"""
+This class implements Black & Scholes & Merton model.
+It also features greek computations methods based on BS analytical
+"""
 
 
 class BlackScholes():
-    def __init__(self, implementationType):
+    def __init__(self, implementationType, num_step_per_year=52, pu=None, pd=None):
+        """
+        :param implementationType: Black Scholes implementation : analytical, binomial tree or CRR tree
+        :param num_step_per_year: only necessary for Tree implementation - Default if 52
+        :param pu: Mandatory for BINOMIAL TREE - Default to None
+        :param pd: Mandatory for BINOMIAL TREE - Default to None
+        """
         self._implementationType = implementationType
+        self._num_step = num_step_per_year
+        self._pu = pu
+        self._pd = pd
 
     def value(self,
               spotPrice: float,
@@ -38,22 +51,20 @@ class BlackScholes():
                 return v
 
             elif self._implementationType == BlackScholesTypes.BINOM_TREE:
-            # TODO IMPLEMENTER + TEST
-                v = 0
+
+                option_tree = BinomialTreeOption(spotPrice, strike_price, risk_free_rate,
+                                                 time_to_expiry, self._num_step, dividendRate, volatility,
+                                                 self._pu, self._pd, option_type)
+
+                return option_tree.price()
 
             elif self._implementationType == BlackScholesTypes.CRR_TREE:
-            # TODO IMPLEMENTER + TEST
-                v = 0
-                # crr_tree_val_avg(spotPrice,
-                #                      risk_free_rate,
-                #                      dividendRate,
-                #                      self._volatility,
-                #                      self._num_steps_per_year,
-                #                      time_to_expiry,
-                #                      option_type.value,
-                #                      strike_price)['value']
 
-                return v
+                option_tree = CRRTreeOption(spotPrice, strike_price, risk_free_rate,
+                                            time_to_expiry, self._num_step, dividendRate, volatility,
+                                            self._pu, self._pd, option_type)
+
+                return option_tree.price()
 
             else:
 
@@ -64,7 +75,21 @@ class BlackScholes():
             if self._implementationType is BlackScholesTypes.DEFAULT:
                 self._implementationType = BlackScholesTypes.CRR_TREE
 
-        # TODO IMPLEMENTER
+            if self._implementationType is BlackScholesTypes.CRR_TREE:
+
+                option_tree = CRRTreeOption(spotPrice, strike_price, risk_free_rate,
+                                            time_to_expiry, self._num_step, dividendRate, volatility,
+                                            self._pu, self._pd, option_type)
+
+                return option_tree.price()
+
+            elif self._implementationType is BlackScholesTypes.BINOM_TREE:
+                option_tree = BinomialTreeOption(spotPrice, strike_price, risk_free_rate,
+                                                 time_to_expiry, self._num_step, dividendRate, volatility,
+                                                 self._pu, self._pd, option_type)
+
+                return option_tree.price()
+
         else:
 
             raise Exception("Wrong option type")
@@ -197,5 +222,3 @@ def bs_rho(S, K, r, T, q, sigma, option_type):
 
     rho = phi * K * T * np.exp(-r * T) * norm.cdf(phi * d2)
     return rho
-
-
