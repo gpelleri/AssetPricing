@@ -1,5 +1,6 @@
 from assetpricing.products.equity.option import Option
 from assetpricing.models.black_scholes import *
+from assetpricing.models.montecarlo import *
 from assetpricing.utils.types import *
 import numpy as np
 from assetpricing.products.equity.stock import Stock
@@ -33,26 +34,14 @@ class VanillaOption(Option):
             value = model.value(ul.getPrice(), self.getStrike(), risk_free_rate, self.getExpiry(), ul.getDiv(),
                                 ul.getVol(), self.getOptionType())
 
+        elif isinstance(model, Montecarlo):
+            value = model.bs_value_mc(ul.getPrice(), self.getStrike(), risk_free_rate,self.getExpiry(), ul.getDiv(),
+                                      ul.getVol(), self.getOptionType())
+
         else:
             raise Exception("Model : " + model + " isn't implemented")
 
         return value
-
-    # TODO
-    def value_mc(self,
-                 risk_free_rate,
-                 nb_paths,
-                 seed):
-
-        ul = self.getUnderlying()
-
-        if np.any(ul.getPrice() <= 0.0):
-            raise Exception("Stock price must be greater than zero.")
-
-        if np.any(self.getExpiry() < 0.0):
-            raise Exception("Time to expiry must be positive.")
-
-        return 0
 
 
 # TODO : Create unit test module & include those & expand cases
@@ -65,3 +54,7 @@ if __name__ == '__main__':
     md = BlackScholes(BlackScholesTypes.ANALYTICAL)
     print(edf_call.value(r, md))
     # 3.8597599507749933
+
+    mc = Montecarlo(100000, 67889)
+    print(edf_call.value(r, mc))
+    # with 100000 path, value should be between 3.83 - 3.87 for any seed
