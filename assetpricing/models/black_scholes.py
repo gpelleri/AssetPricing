@@ -12,7 +12,7 @@ It also features greek computations methods based on BS analytical
 
 
 class BlackScholes():
-    def __init__(self, implementationType, num_step_per_year=52, pu=None, pd=None):
+    def __init__(self, implementationType=BlackScholesTypes.DEFAULT, num_step_per_year=52, pu=None, pd=None):
         """
         :param implementationType: Black Scholes implementation : analytical, binomial tree or CRR tree
         :param num_step_per_year: only necessary for Tree implementation - Default if 52

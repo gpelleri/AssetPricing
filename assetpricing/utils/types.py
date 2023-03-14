@@ -39,6 +39,13 @@ class EquityBarrierTypes(Enum):
     DOWN_AND_IN_PUT = 8
 
 
+class DigitalOptionTypes(Enum):
+    CASH_OR_NOTHING_CALL = 1
+    CASH_OR_NOTHING_PUT = 2
+    ASSET_OR_NOTHING_CALL = 3
+    ASSET_OR_NOTHING_PUT = 4
+
+
 class BlackScholesTypes(Enum):
     DEFAULT = 0
     ANALYTICAL = 1

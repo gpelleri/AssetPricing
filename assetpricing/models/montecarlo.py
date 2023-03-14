@@ -47,7 +47,7 @@ class Montecarlo():
         d = np.random.standard_normal(num_paths)
         ss = S0 * exp((r - q - sigma ** 2 / 2.0) * expiry)
 
-        # +g / -g to have 2 payoff generated for each normal distribution draw
+        # +d / -d to have 2 payoff generated for each normal distribution draw
         if option_type == OptionTypes.EUROPEAN_CALL:
 
             for i in range(0, num_paths):
@@ -71,5 +71,7 @@ class Montecarlo():
         v = payoff * np.exp(-r * expiry) / num_paths / 2
         return v
 
+    # TODO
     def barrier_mc(self):
         pass
+

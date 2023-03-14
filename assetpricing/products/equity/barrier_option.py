@@ -18,12 +18,12 @@ class BarrierOption(Option):
     def getBarrier(self):
         return self._barrier
 
-    # value should either allow to price with BS & MC ? Or should I make another function like value_mc ?
+    # Doesn't Belong to BS class as it would expand too much BlackScholes value entry function
+    # Maybe to a proper model - not a big fan either
     def value(self,
               option_type: int,
               num_observations,  # number of observations per year
-              risk_free_rate: float,
-              div_rate: float):
+              risk_free_rate: float):
         """ Values a barrier option according to formulas found in Bouzoubaa.
          Barrier adjustment for discrete observation values are told to be taken from Broadie - 1977 """
 
@@ -31,7 +31,7 @@ class BarrierOption(Option):
         # we compute number of intermediate values that we're going to use a lot
         # I believe for performance & comprehension using getters 50 times isn't great
         r = risk_free_rate
-        q = div_rate
+        q = ul.getDiv()
         K = self.getStrike()
         S = ul.getPrice()
         H = self.getBarrier()
@@ -104,11 +104,10 @@ class BarrierOption(Option):
         y = np.log(H ** 2 / (S * K)) / sigma_root_t + lbd * sigma_root_t
         x1 = np.log(S / H) / sigma_root_t + lbd * sigma_root_t
         y1 = np.log(H / S) / sigma_root_t + lbd * sigma_root_t
-        hOverS = (H / S)
 
         # Bouzoubaa tells us that :
-        # C(K,T) = Call_UP_AND_IN(K,T,H) + Call_UP_AND_OUT(K,T,H)
-        #
+        # C(K,T) = CUO + CUI
+        # P(K,T) = PDO + PDI
         if option_type == EquityBarrierTypes.DOWN_AND_OUT_CALL.value:
             if H >= K:
                 c_do = S * dq * norm.cdf(x1) - K * df * norm.cdf(x1 - sigma_root_t) \
