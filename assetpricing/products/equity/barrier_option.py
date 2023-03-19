@@ -23,7 +23,8 @@ class BarrierOption(Option):
     def value(self,
               option_type: int,
               num_observations,  # number of observations per year
-              risk_free_rate: float):
+              risk_free_rate: float,
+              notional =1):
         """ Values a barrier option according to formulas found in Bouzoubaa.
          Barrier adjustment for discrete observation values are told to be taken from Broadie - 1977 """
 
@@ -194,4 +195,4 @@ class BarrierOption(Option):
         else:
             raise Exception("Unknown Barrier Option type")
 
-        return price
+        return price * notional

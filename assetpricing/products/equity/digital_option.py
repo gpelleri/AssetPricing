@@ -28,7 +28,7 @@ class DigitalOption(Option):
     def getStrike(self):
         return self._barrier
 
-    def value(self, risk_free_rate):
+    def value(self, risk_free_rate, notional=1):
         ul = self.getUnderlying()
 
         if np.any(ul.getPrice() <= 0.0):
@@ -68,7 +68,7 @@ class DigitalOption(Option):
         else:
             raise Exception("Unknown Digital option type.")
 
-        return v
+        return v * notional
 
 
 # TODO : Create unit test module & include those & expand cases
