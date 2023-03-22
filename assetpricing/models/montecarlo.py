@@ -44,6 +44,7 @@ class Montecarlo():
         np.random.seed(self.getSeed())
         num_paths = self.getNumPath()
         payoff = 0.0
+        sqrT = np.sqrt(expiry)
 
         d = np.random.standard_normal(num_paths)
         ss = S0 * exp((r - q - sigma ** 2 / 2.0) * expiry)
@@ -52,16 +53,16 @@ class Montecarlo():
         if option_type == OptionTypes.EUROPEAN_CALL:
 
             for i in range(0, num_paths):
-                s_1 = ss * exp(+d[i] * sigma * np.sqrt(expiry))
-                s_2 = ss * exp(-d[i] * sigma * np.sqrt(expiry))
+                s_1 = ss * exp(+d[i] * sigma * sqrT)
+                s_2 = ss * exp(-d[i] * sigma * sqrT)
                 payoff += max(s_1 - strike, 0.0)
                 payoff += max(s_2 - strike, 0.0)
 
         elif option_type == OptionTypes.EUROPEAN_PUT:
 
             for i in range(0, num_paths):
-                s_1 = ss * exp(+d[i] * sigma * np.sqrt(expiry))
-                s_2 = ss * exp(-d[i] * sigma * np.sqrt(expiry))
+                s_1 = ss * exp(+d[i] * sigma * sqrT)
+                s_2 = ss * exp(-d[i] * sigma * sqrT)
                 payoff += max(strike - s_1, 0.0)
                 payoff += max(strike - s_2, 0.0)
 
@@ -72,7 +73,6 @@ class Montecarlo():
         v = payoff * np.exp(-r * expiry) / num_paths / 2
         return v
 
-    # TODO
     def barrier_mc(self, S, strike, risk_free, expiry, q, sigma, H, option_type, notional=1):
 
         nb_paths = self.getNumPath()
