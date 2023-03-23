@@ -1,6 +1,8 @@
 from assetpricing.products.security import *
 from ...utils.types import *
 import yfinance as yf
+import pandas as pd
+import datetime as dt
 
 
 class Stock(Security):
@@ -49,7 +51,7 @@ class Stock(Security):
         :param ticker: name of ticker on yahoo finance
         """
         df = yf.download(ticker)
-        self.price = (df['Ask'] + df['Bid']) / 2
+        self.price = df['Close']
 
     # def createOption(self, option_type, expiry, strike):
     #     """
@@ -74,3 +76,27 @@ class Stock(Security):
         :param volatility:
         """
         self._vol = volatility
+
+    def getOptionData(self):
+        asset = yf.Ticker(self.ticker)
+        expirations = asset.options
+
+        chains = pd.DataFrame()
+        # iterate over expiry dates
+        for expiration in expirations:
+            # tuple of two dataframes
+            opt = asset.option_chain(expiration)
+
+            calls = opt.calls
+            calls['optionType'] = "call"
+            puts = opt.puts
+            puts['optionType'] = "put"
+
+            chain = pd.concat([calls, puts])
+            chain['expiration'] = pd.to_datetime(expiration) + pd.DateOffset(hours=23, minutes=59, seconds=59)
+
+            chains = pd.concat([chains, chain])
+
+        chains["daysToExpiration"] = (chains.expiration - dt.datetime.today()).dt.days + 1
+
+        return chains

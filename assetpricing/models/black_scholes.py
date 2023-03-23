@@ -118,8 +118,8 @@ def bs_value(S, K, r, T, q, sigma, option_type):
         print('Wrong option type specified')
         return 0
 
-    bs_value = phi * norm.cdf(phi * d1) * S * np.exp(-q * T) - phi * norm.cdf(phi * d2) * K * np.exp(-r * T)
-    return bs_value
+    val = phi * norm.cdf(phi * d1) * S * np.exp(-q * T) - phi * norm.cdf(phi * d2) * K * np.exp(-r * T)
+    return val
 
 
 def bs_vega(S, K, r, T, q, sigma):

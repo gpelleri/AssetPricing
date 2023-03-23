@@ -14,9 +14,6 @@ class VanillaOption(Option):
         super().__init__(name, expiry, underlying, strike)
         self.option_type = option_type
 
-    def getOptionType(self):
-        return self.option_type
-
     def value(self,
               risk_free_rate: float,
               model):
@@ -42,4 +39,14 @@ class VanillaOption(Option):
             raise Exception("Model : " + model + " isn't implemented")
 
         return value
+
+
+if __name__ == '__main__':
+    r = 0.05  # risk-free risk in annual %
+    q = 0.02  # annual dividend rate
+
+    edf = Stock("EDF", True, 100, 0.25, 0.02)
+    total = Stock("TSLA", False)
+    chains = total.getOptionData()
+
 
