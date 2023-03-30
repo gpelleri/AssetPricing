@@ -80,7 +80,7 @@ def implied_volatility_NR(O, S, K, T, r, q, option_type, tol=0.0001,
 #     else:
 #         theo_value = bs_value(S, K, r, T, q, sigma, option_type)
 #         if option_type == OptionTypes.EUROPEAN_CALL:
-#             res = sp.minimize_scalar(abs(O,), bounds=(0.01, 6), method='bounded')
+#           res = sp.minimize_scalar(abs(O,), bounds=(0.01, 6), method='bounded')
 #
 #         elif option_type == OptionTypes.EUROPEAN_PUT:
 #             res = sp.minimize_scalar(O, bounds=(0.01, 6),
