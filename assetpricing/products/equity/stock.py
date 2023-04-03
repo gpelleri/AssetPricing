@@ -105,38 +105,39 @@ class Stock(Security):
 
         return chains
 
-    def get_Smile(self, T, rf, df: DataFrame):
-        spot = self.getPrice()
-        div = self.getDiv()
-        puts = df[(df['OptionType'] == 2) & (df['impliedVolatility'] > 0.0001) &
-                  ((df['strike'] > (2/3)*spot) & (df['strike'] < (4/3)*spot))].loc[:]
+    def get_Skew(self, T, rf, df: DataFrame):
+        # filter the input DataFrame to only contain data for the given `Expiry`
+        df_filtered = df[df['Expiry'] == T]
 
-        for i, row in puts.iterrows():
-            last = row["lastPrice"]
-            strike = row["strike"]
-            expiry = row["Expiry"]
-            opt_type = row["OptionType"]
-            imp = implied_volatility(last, spot, strike, expiry, rf, div, opt_type)
-            puts.loc[i, 'imp'] = imp
+        # filter the DF. We only use put data for now, for which implied vol is sufficient
+        # & only have a look at a certains range of strikes
+        spot = self.getPrice()
+        puts = df_filtered[(df_filtered['OptionType'] == 2) & (df_filtered['impliedVolatility'] > 0.0001) &
+                           ((df_filtered['strike'] > (2 / 3) * spot) & (df_filtered['strike'] < 450))].copy()
+
+        puts['Risk-Free Rate'] = rf
+        puts['Dividend'] = self.getDiv()
+        puts['Spot'] = spot
+        puts['imp'] = puts.apply(implied_volatility_row, axis=1)
 
         return puts
 
     def build_Impl_Vol_Surface(self, rf, df: DataFrame, option_type):
-        # first filter dataframe to only interesting cols
+        options_filtered = df[df['OptionType'] == option_type]
 
-        data = df.loc[df['optionType'] == option_type, ['lastPrice', 'strike', 'Expiry', 'optionType']]
+        # filter the DataFrame to only contain 'Expiry' between 0.5 and 1.5
+        # arbitrary time for now, tbd
+        expiry_filtered = options_filtered[(options_filtered['Expiry'] >= 0.5) & (options_filtered['Expiry'] <= 1.5)]
 
-        filtered_exp = data[(data['Expiry'] > 0.5) & (data['Expiry'] < 2.5)]
-        unique_exp = filtered_exp['Expiry'].unique()
-        dfs = []
-        for exp in unique_exp:
-            if data['Expiry'].eq(exp).any():
-                smile = self.get_Smile(exp, rf, data)
-                dfs.append(smile)
+        # group the filtered DataFrame by 'Expiry' and apply the `get_Skew` function to each group
+        expiries = expiry_filtered['Expiry'].unique()
+        skew_dfs = []
+        for T in expiries:
+            skew_df = self.get_Skew(T, rf, expiry_filtered)
+            skew_dfs.append(skew_df)
 
-        result = pd.concat(dfs)
+        # concatenate the resulting DataFrames into a single DataFrame
+        skew_df = pd.concat(skew_dfs, ignore_index=True)
 
-        # define a subset of expiry
-        # iterate over subset and call Get_Smile
-        #
-        return result
+        return skew_df
+

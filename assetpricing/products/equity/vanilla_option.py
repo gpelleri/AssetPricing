@@ -1,16 +1,19 @@
-from assetpricing.products.equity.option import Option
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.interpolate import griddata
+
 from assetpricing.models.black_scholes import *
 from assetpricing.models.montecarlo import *
-from assetpricing.utils.global_types import *
-import numpy as np
+from assetpricing.products.equity.option import Option
 from assetpricing.products.equity.stock import Stock
-import matplotlib.pyplot as plt
+from assetpricing.utils.global_types import *
 
 
 class VanillaOption(Option):
     """
     Class that defines the most simple European Option.
     """
+
     def __init__(self, name, expiry, underlying, strike, option_type: OptionTypes):
         super().__init__(name, expiry, underlying, strike)
         self.option_type = option_type
@@ -33,7 +36,7 @@ class VanillaOption(Option):
                                 ul.getVol(), self.getOptionType())
 
         elif isinstance(model, Montecarlo):
-            value = model.bs_value_mc(ul.getPrice(), self.getStrike(), risk_free_rate,self.getExpiry(), ul.getDiv(),
+            value = model.bs_value_mc(ul.getPrice(), self.getStrike(), risk_free_rate, self.getExpiry(), ul.getDiv(),
                                       ul.getVol(), self.getOptionType())
 
         else:
@@ -48,28 +51,34 @@ if __name__ == '__main__':
 
     spy = Stock("SPY", False)
     chains = spy.getOptionData()
-    surface = spy.build_Impl_Vol_Surface(r, chains, OptionTypes.EUROPEAN_PUT.value)
-    # skew = spy.get_Smile(201, r, chains)
+    chains['Dividend'] = spy.getDiv()
+    chains['Spot'] = spy.getPrice()
+    chains['Risk-Free Rate'] = r
+    skew_df = spy.build_Impl_Vol_Surface(r, chains[['lastPrice', 'strike', 'Expiry', 'OptionType',
+                                         'impliedVolatility', 'Dividend', 'Spot', 'Risk-Free Rate']],
+                                         OptionTypes.EUROPEAN_PUT.value)
+    # create a grid of x, y, and z values
+    y = skew_df['Expiry'].values
+    x = skew_df['strike'].values
+    z = skew_df['imp'].values
 
-    calls = chains[chains["optionType"] == "put"]
+    # create a grid of x and y values for the plot
+    xi = np.linspace(min(x), max(x), 100)
+    yi = np.linspace(min(y), max(y), 100)
+    xi, yi = np.meshgrid(xi, yi)
 
-    # print the expirations
-    set(calls.expiration)
-    unique = calls['Expiry']
-    # # select an expiration to plot
-    calls_at_expiry = calls[calls["expiration"] == "2023-10-20 23:59:59"]
-    # # filter out low vols
-    filtered_calls_at_expiry = calls_at_expiry[calls_at_expiry.impliedVolatility >= 0.0001]
-    # # set the strike as the index so pandas plots nicely
-    # display yahoo finance skew
-    filtered_calls_at_expiry[["strike", "impliedVolatility"]].set_index("strike").plot(
-        title="Implied Volatility Skew", figsize=(7, 4)
-    )
-    # display computed skew
-    skew[["strike", "imp"]].set_index("strike").plot(
-        title="Implied Volatility Skew", figsize=(7, 4)
-    )
-    # we can easily see there's an issue with the high strike, for a reason that i'm missing
+    # interpolate the z values onto the grid of x and y values
+    zi = griddata((x, y), z, (xi, yi), method='linear')
+
+    # plot the surface
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # x, y, and z are arrays of Expiry, Strike, and Implied Volatility values, respectively
+    ax.plot_surface(xi, yi, zi)
+
+    ax.set_ylabel('Expiry')
+    ax.set_xlabel('Strike')
+    ax.set_zlabel('Implied Volatility')
+
     plt.show()
-
-

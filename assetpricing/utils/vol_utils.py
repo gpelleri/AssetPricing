@@ -1,6 +1,5 @@
-import numpy as np
 import scipy as sp
-from pandas import DataFrame
+
 from assetpricing.models.black_scholes import *
 
 
@@ -31,6 +30,40 @@ def implied_volatility(opt_val, spot, strike, expiry, rf, div, option_type, meth
     """
     This function get implied volatility from a call option using either Bisection, Newton or Brent method
     """
+    # sigma initial value
+    sig_start = np.sqrt(2 * np.pi / expiry) * opt_val / spot
+    arglist = (spot, strike, rf, expiry, div, option_type, opt_val)
+    argsv = np.array(arglist)
+
+    if method == "Bisection":
+        sigma = bisection(volatility, 1e-5, 10.0, argsv, xtol=0.00001)
+
+    # sometimes fails to converge if option value is too small
+    elif method == "Newton":
+        sigma = sp.optimize.newton(volatility, x0=sig_start, fprime=fvega, args=argsv,
+                                   tol=0.00001, maxiter=50, fprime2=None)
+    else:
+        sigma = sp.optimize.brentq(volatility, 0.00001, 100, maxiter=1000, args=argsv)
+
+    return sigma
+
+
+def implied_volatility_row(row, method="Bisection"):
+    """
+    Mimic Implied_Volatilty but using a dataframe row as parameter, in order to increase performance.
+    N.B. This function allows to compute all implied vol at once by using df.apply(implied_vol_row)
+    instead of having to iterate over the DF
+    """
+
+    # Extract values from row
+    opt_val = row['lastPrice']
+    spot = row['Spot']
+    strike = row['strike']
+    expiry = row['Expiry']
+    rf = row['Risk-Free Rate']
+    div = row['Dividend']
+    option_type = row['OptionType']
+
     # sigma initial value
     sig_start = np.sqrt(2 * np.pi / expiry) * opt_val / spot
     arglist = (spot, strike, rf, expiry, div, option_type, opt_val)
@@ -89,15 +122,7 @@ def bisection(func, x1, x2, args, xtol=1e-6, maxIter=100):
 
 
 if __name__ == '__main__':
-    # observed_price = 18
-    # S = 100
-    # K = 115
-    # T = 1
     r = 0.05
-    #
-    # imp_vol = implied_volatility_NR(observed_price, S, K, T, r, 0, OptionTypes.EUROPEAN_CALL)
-    # print(imp_vol)
-
     observed_price = 12.138866898974783
     S1 = 100
     K1 = 110
