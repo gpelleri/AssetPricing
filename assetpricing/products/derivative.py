@@ -1,5 +1,5 @@
 from assetpricing.products.security import *
-from assetpricing.utils.types import *
+from assetpricing.utils.global_types import *
 from assetpricing.products.underlying import Underlying
 
 # TODO : remove pre-determined type on underlying

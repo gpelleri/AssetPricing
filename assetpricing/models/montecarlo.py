@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 
-from assetpricing.utils.types import OptionTypes, EquityBarrierTypes
+from assetpricing.utils.global_types import OptionTypes, EquityBarrierTypes
 from math import exp, sqrt, log
 
 """

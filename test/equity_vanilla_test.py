@@ -1,6 +1,6 @@
 import unittest
 from assetpricing.products.equity import Stock, VanillaOption
-from assetpricing.utils.types import *
+from assetpricing.utils.global_types import *
 from assetpricing.models.black_scholes import BlackScholes
 from assetpricing.models.montecarlo import Montecarlo
 

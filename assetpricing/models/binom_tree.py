@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from assetpricing.utils.types import *
+from assetpricing.utils.global_types import *
 
 """ 
 Price an option by the binomial tree model. This class serves as a base for other types of trees such as CRR tree

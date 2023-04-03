@@ -1,9 +1,10 @@
 import numpy as np
+from pandas import DataFrame
 from scipy.stats import norm
 
 from assetpricing.models.binom_tree import BinomialTreeOption
 from assetpricing.models.crr_tree import CRRTreeOption
-from assetpricing.utils.types import OptionTypes, BlackScholesTypes
+from assetpricing.utils.global_types import OptionTypes, BlackScholesTypes
 
 """
 This class implements Black & Scholes & Merton model.
@@ -46,7 +47,7 @@ class BlackScholes():
                              time_to_expiry,
                              dividendRate,
                              volatility,
-                             option_type.value)
+                             option_type)
 
                 return v
 
@@ -122,6 +123,56 @@ def bs_value(S, K, r, T, q, sigma, option_type):
     return val
 
 
+def bsm_price_df(row,r,q):
+    S = row['S']
+    K = row['K']
+    T = row['T']
+    sigma = row['sigma']
+    option_type = row['OptionType']
+    return bs_value(S, K, r, T, q, sigma, option_type)
+
+
+def bs_value_df(df: DataFrame) -> DataFrame:
+    """
+    Compute BSM value using dataframe. This is mainly used to get implied volatility surface
+
+    :param df: DataFrame with the following columns:
+        - 'S': underlying asset price
+        - 'K': option strike price
+        - 'r': risk-free interest rate
+        - 'sigma': volatility of the underlying asset
+        - 'T': time to expiration (in years)
+        - 'type': 'call' or 'put'
+    :return: DataFrame with the following columns:
+        - 'option_price': option price calculated using the BSM model
+    """
+
+    # Extract the input variables from the dataframe
+    S = df['S']
+    K = df['K']
+    r = df['r']
+    sigma = df['sigma']
+    T = df['T']
+    option_type = df['type']
+
+    # Calculate the BSM model inputs
+    d1 = (np.log(S / K) + (r + sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+
+    # Calculate the option price using the BSM model
+    if option_type == 'call':
+        option_price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+    elif option_type == 'put':
+        option_price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+    else:
+        raise ValueError("Invalid option type. Must be 'call' or 'put'.")
+
+    # Add the option price to the dataframe
+    df['option_price'] = option_price
+
+    return df[['option_price']]
+
+
 def bs_vega(S, K, r, T, q, sigma):
     """"
     :param S: Asset price
@@ -133,7 +184,7 @@ def bs_vega(S, K, r, T, q, sigma):
     :return: partial derivative w.r.t volatility
     """
     d1 = 1 / (sigma * np.sqrt(T)) * (np.log(S / K) + (r - q + sigma ** 2 / 2) * T)
-    return S * np.sqrt(-q * T) * norm.pdf(d1)
+    return S * np.exp(-q * T) * np.sqrt(T) * norm.pdf(d1)
 
 
 def bs_delta(S, K, r, T, q, sigma, option_type):

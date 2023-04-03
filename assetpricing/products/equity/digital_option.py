@@ -4,7 +4,7 @@ from assetpricing.models.montecarlo import Montecarlo
 from assetpricing.models.black_scholes import BlackScholes
 from assetpricing.products.equity import Stock
 from assetpricing.products.equity.option import Option
-from assetpricing.utils.types import *
+from assetpricing.utils.global_types import *
 from scipy.stats import norm
 
 

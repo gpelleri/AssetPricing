@@ -1,5 +1,6 @@
 from assetpricing.products.security import *
-from ...utils.types import *
+from ...utils.global_types import *
+from assetpricing.utils.vol_utils import *
 import yfinance as yf
 import pandas as pd
 import datetime as dt
@@ -50,8 +51,8 @@ class Stock(Security):
         Function to "pull" stock data from yahoo finance and set its price to current spot price
         :param ticker: name of ticker on yahoo finance
         """
-        df = yf.download(ticker)
-        self.price = df['Close']
+        df = yf.download(ticker, period="1d")
+        self.price = df['Close'][-1]
 
     # def createOption(self, option_type, expiry, strike):
     #     """
@@ -100,3 +101,28 @@ class Stock(Security):
         chains["daysToExpiration"] = (chains.expiration - dt.datetime.today()).dt.days + 1
 
         return chains
+
+    def get_Smile(self, spot, T, rf, div, df: DataFrame):
+        df["Expiry"] = df["daysToExpiration"] / 365  # add column expiry on annual basis
+        fct = lambda x: OptionTypes.EUROPEAN_CALL.value if x == "call" else OptionTypes.EUROPEAN_PUT.value
+        df["OptionType"] = df["optionType"].apply(fct)
+        puts = df[(df['OptionType'] == 2) & (df['daysToExpiration'] == T) & (df['impliedVolatility'] > 0.0001) &
+                  ((df['strike'] > (2/3)*spot) & (df['strike'] < (4/3)*spot))].loc[:]
+
+        for i, row in puts.iterrows():
+            last = row["lastPrice"]
+            strike = row["strike"]
+            expiry = row["Expiry"]
+            opt_type = row["OptionType"]
+            imp = implied_volatility(last, spot, strike, expiry, rf, div, opt_type)
+            puts.loc[i, 'imp'] = imp
+
+        return puts
+
+    def get_Implied_Vol_Surface(self):
+        # todo
+        # define a subset of expiry
+        # iterate over subset and call Get_Smile
+        #
+        pass
+    

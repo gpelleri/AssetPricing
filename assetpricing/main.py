@@ -1,88 +1,47 @@
-# import financepy as fp
-from assetpricing.products.equity.option import *
-from scipy.stats import norm
-from numpy import np
-from utils import *
+import os
+import pandas as pd
 
 
-def montecarlo_sim(S, T, r, q, sigma, steps, N):
+def read_csv_file(filename):
     """
-    #S = Current stock Price - follows a geometric brownian motion
-    #K = Strike Price
-    #T = Time to maturity 1 year = 1, 1 months = 1/12
-    #r = risk free interest rate
-    #q = dividend yield
-    # sigma = volatility
+    Reads a CSV file from the parent directory of the current working directory
+    and creates a dataframe with the data.
 
-    Return
-    # [steps,N] Matrix of asset paths
+    Parameters:
+        filename (str): The name of the CSV file to read.
+
+    Returns:
+        pandas.DataFrame: A dataframe containing the data from the CSV file.
     """
-    dt = T / steps
-    ST = np.log(S) + np.cumsum(((r - q - sigma ** 2 / 2) * dt +
-                                sigma * np.sqrt(dt) *
-                                np.random.normal(size=(steps, N))), axis=0)
+    # Get the path to the parent directory of the current working directory
+    parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 
-    return np.exp(ST)
+    # Construct the full path to the CSV file
+    filepath = os.path.join(parent_dir, filename)
 
+    # Use pandas to read the CSV file from the given filepath
+    df = pd.read_csv(filepath)
 
-def black_scholes_calc(S0, K, r, T, sigma, q, option_type):
-    """This function calculates the value of the European option based on Black-Scholes formula"""
-    # 1) determine N(d1) and N(d2)
-    d1 = 1 / (sigma * np.sqrt(T)) * (np.log(S0 / K) + (r -q + sigma ** 2 / 2) * T)
-    d2 = d1 - sigma * np.sqrt(T)
-    nd1 = norm.cdf(d1)
-    nd2 = norm.cdf(d2)
-    n_d1 = norm.cdf(-d1)
-    n_d2 = norm.cdf(-d2)
-    # 2) determine call value
-    c = nd1 * S0 * np.exp(-q * T) - nd2 * K * np.exp(-r * T)
-    # 3) determine put value
-    p = K * np.exp(-r * T) * n_d2 - S0 * np.exp(-q * T) * n_d1
-    # 4) define which value to return based on the option_type parameter
-    if option_type == 'call':
-        return c
-    elif option_type == 'put':
-        return p
-    else:
-        print('Wrong option type specified')
+    # Return the dataframe
+    return df
 
 
-def init():
-    edf = Stock("EDF", 100, 0.25)
-    edf_call = Option("EDF-call", DERIVATIVES, 0.5, edf, 110)
-    return edf_call
-
-
-if __name__ == '__main__':
-    """
-    S = 100  # stock price
-    K = 110  # strike
-    T = 1 / 2  # time to maturity
-    r = 0.05  # risk-free risk in annual %
-    q = 0.02  # annual dividend rate
-    sigma = 0.25  # annual volatility in %
-    steps = 100  # time steps
-    N = 1000  # number of trials
-
-    paths = montecarlo_sim(S, T, r, q, sigma, steps, N)
-    """
-    # S = 100  # stock price
-    # K = 110  # strike
-    # T = 1 / 2  # time to maturity
-    r = 0.05  # risk-free risk in annual %
-    q = 0.02  # annual dividend rate
-    # sigma = 0.25  # annual volatility in %
-    # steps = 100  # time steps
-    call = init()
-    print(call.value(100, 110, r, 1 / 2, q, 0.25, "call"))
-    #  print(call.bsmValue(call.getUnderlying().getPrice(), call.getStrike(), r, call.getExpiry(), q, 0.25, "call"))
-
-    # S0 = 8.;
-    # K = 9.;
-    # T = 3 / 12.;
-    # r = .01;
-    # sigma = .2
-    # print(black_scholes_calc(S0, K, r, T, sigma, 0, 'call'))
+df = read_csv_file("options_data.csv")
 
 
 
+calls = chains[chains["optionType"] == "put"]
+
+# print the expirations
+set(calls.expiration)
+#
+# # select an expiration to plot
+calls_at_expiry = calls[calls["expiration"] == "2023-05-05 23:59:59"]
+#
+# # filter out low vols
+filtered_calls_at_expiry = calls_at_expiry[calls_at_expiry.impliedVolatility >= 0.0001]
+#
+# # set the strike as the index so pandas plots nicely
+filtered_calls_at_expiry[["strike", "impliedVolatility"]].set_index("strike").plot(
+     title="Implied Volatility Skew", figsize=(7, 4)
+)

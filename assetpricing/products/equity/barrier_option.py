@@ -1,7 +1,7 @@
 from assetpricing.models.montecarlo import *
 from assetpricing.products.equity import Stock
 from assetpricing.products.equity.option import Option
-from assetpricing.utils.types import *
+from assetpricing.utils.global_types import *
 import matplotlib.pyplot as plt
 
 

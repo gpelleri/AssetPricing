@@ -1,9 +1,10 @@
 from assetpricing.products.equity.option import Option
 from assetpricing.models.black_scholes import *
 from assetpricing.models.montecarlo import *
-from assetpricing.utils.types import *
+from assetpricing.utils.global_types import *
 import numpy as np
 from assetpricing.products.equity.stock import Stock
+import matplotlib.pyplot as plt
 
 
 class VanillaOption(Option):
@@ -43,10 +44,30 @@ class VanillaOption(Option):
 
 if __name__ == '__main__':
     r = 0.05  # risk-free risk in annual %
-    q = 0.02  # annual dividend rate
+    q = 0  # annual dividend rate
 
-    edf = Stock("EDF", True, 100, 0.25, 0.02)
-    total = Stock("TSLA", False)
-    chains = total.getOptionData()
+    spy = Stock("SPY", False)
+    chains = spy.getOptionData()
+    skew = spy.get_Smile(spy.getPrice(), 201, r, q, chains)
+
+    calls = chains[chains["optionType"] == "put"]
+
+    # print the expirations
+    set(calls.expiration)
+    # # select an expiration to plot
+    calls_at_expiry = calls[calls["expiration"] == "2023-10-20 23:59:59"]
+    # # filter out low vols
+    filtered_calls_at_expiry = calls_at_expiry[calls_at_expiry.impliedVolatility >= 0.0001]
+    # # set the strike as the index so pandas plots nicely
+    # display yahoo finance skew
+    filtered_calls_at_expiry[["strike", "impliedVolatility"]].set_index("strike").plot(
+        title="Implied Volatility Skew", figsize=(7, 4)
+    )
+    # display computed skew
+    skew[["strike", "imp"]].set_index("strike").plot(
+        title="Implied Volatility Skew", figsize=(7, 4)
+    )
+    # we can easily see there's an issue with the high strike, for a reason that i'm missing
+    plt.show()
 
 

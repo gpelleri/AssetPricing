@@ -1,1 +1,1 @@
-from .types import *
+from .global_types import *
