@@ -71,12 +71,11 @@ class Stock(Security):
     #         self._derivatives = []
     #     self._derivatives.append(option)
 
-    def __SetVol__(self, volatility):
+    def __SetVol__(self, vol):
         """
         Private setter : must ONLY be called by derivatives class when extracting implied vol
-        :param volatility:
         """
-        self._vol = volatility
+        self._vol = vol
 
     def getOptionData(self):
         asset = yf.Ticker(self.ticker)
@@ -100,13 +99,16 @@ class Stock(Security):
 
         chains["daysToExpiration"] = (chains.expiration - dt.datetime.today()).dt.days + 1
 
+        chains["Expiry"] = chains["daysToExpiration"] / 365
+        fct = lambda x: OptionTypes.EUROPEAN_CALL.value if x == "call" else OptionTypes.EUROPEAN_PUT.value
+        chains["OptionType"] = chains["optionType"].apply(fct)
+
         return chains
 
-    def get_Smile(self, spot, T, rf, div, df: DataFrame):
-        df["Expiry"] = df["daysToExpiration"] / 365  # add column expiry on annual basis
-        fct = lambda x: OptionTypes.EUROPEAN_CALL.value if x == "call" else OptionTypes.EUROPEAN_PUT.value
-        df["OptionType"] = df["optionType"].apply(fct)
-        puts = df[(df['OptionType'] == 2) & (df['daysToExpiration'] == T) & (df['impliedVolatility'] > 0.0001) &
+    def get_Smile(self, T, rf, df: DataFrame):
+        spot = self.getPrice()
+        div = self.getDiv()
+        puts = df[(df['OptionType'] == 2) & (df['impliedVolatility'] > 0.0001) &
                   ((df['strike'] > (2/3)*spot) & (df['strike'] < (4/3)*spot))].loc[:]
 
         for i, row in puts.iterrows():
@@ -119,10 +121,22 @@ class Stock(Security):
 
         return puts
 
-    def get_Implied_Vol_Surface(self):
-        # todo
+    def build_Impl_Vol_Surface(self, rf, df: DataFrame, option_type):
+        # first filter dataframe to only interesting cols
+
+        data = df.loc[df['optionType'] == option_type, ['lastPrice', 'strike', 'Expiry', 'optionType']]
+
+        filtered_exp = data[(data['Expiry'] > 0.5) & (data['Expiry'] < 2.5)]
+        unique_exp = filtered_exp['Expiry'].unique()
+        dfs = []
+        for exp in unique_exp:
+            if data['Expiry'].eq(exp).any():
+                smile = self.get_Smile(exp, rf, data)
+                dfs.append(smile)
+
+        result = pd.concat(dfs)
+
         # define a subset of expiry
         # iterate over subset and call Get_Smile
         #
-        pass
-    
+        return result

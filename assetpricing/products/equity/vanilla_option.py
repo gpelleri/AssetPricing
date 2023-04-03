@@ -48,12 +48,14 @@ if __name__ == '__main__':
 
     spy = Stock("SPY", False)
     chains = spy.getOptionData()
-    skew = spy.get_Smile(spy.getPrice(), 201, r, q, chains)
+    surface = spy.build_Impl_Vol_Surface(r, chains, OptionTypes.EUROPEAN_PUT.value)
+    # skew = spy.get_Smile(201, r, chains)
 
     calls = chains[chains["optionType"] == "put"]
 
     # print the expirations
     set(calls.expiration)
+    unique = calls['Expiry']
     # # select an expiration to plot
     calls_at_expiry = calls[calls["expiration"] == "2023-10-20 23:59:59"]
     # # filter out low vols
