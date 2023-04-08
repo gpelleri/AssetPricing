@@ -1,7 +1,3 @@
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.interpolate import griddata
-
 from assetpricing.models.black_scholes import *
 from assetpricing.models.montecarlo import *
 from assetpricing.products.equity.option import Option
@@ -49,36 +45,16 @@ if __name__ == '__main__':
     r = 0.05  # risk-free risk in annual %
     q = 0  # annual dividend rate
 
-    spy = Stock("SPY", False)
-    chains = spy.getOptionData()
-    chains['Dividend'] = spy.getDiv()
-    chains['Spot'] = spy.getPrice()
+    apple = Stock("AAPL", False)
+    chains = apple.getOptionData()
+    chains['Dividend'] = apple.getDiv()
+    chains['Spot'] = apple.getPrice()
     chains['Risk-Free Rate'] = r
-    skew_df = spy.build_Impl_Vol_Surface(r, chains[['lastPrice', 'strike', 'Expiry', 'OptionType',
-                                         'impliedVolatility', 'Dividend', 'Spot', 'Risk-Free Rate']],
-                                         OptionTypes.EUROPEAN_PUT.value)
-    # create a grid of x, y, and z values
-    y = skew_df['Expiry'].values
-    x = skew_df['strike'].values
-    z = skew_df['imp'].values
 
-    # create a grid of x and y values for the plot
-    xi = np.linspace(min(x), max(x), 100)
-    yi = np.linspace(min(y), max(y), 100)
-    xi, yi = np.meshgrid(xi, yi)
+    cleaned = apple.clean_Option_Data(chains)
 
-    # interpolate the z values onto the grid of x and y values
-    zi = griddata((x, y), z, (xi, yi), method='linear')
+    x,y,z = apple.build_Impl_Vol_Surface(cleaned, OptionTypes.EUROPEAN_PUT)
+    apple.plot_Vol_Surface(x,y,z)
 
-    # plot the surface
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
 
-    # x, y, and z are arrays of Expiry, Strike, and Implied Volatility values, respectively
-    ax.plot_surface(xi, yi, zi)
 
-    ax.set_ylabel('Expiry')
-    ax.set_xlabel('Strike')
-    ax.set_zlabel('Implied Volatility')
-
-    plt.show()

@@ -1,3 +1,6 @@
+from matplotlib import pyplot as plt
+from scipy.interpolate import griddata, Rbf
+
 from assetpricing.products.security import *
 from ...utils.global_types import *
 from assetpricing.utils.vol_utils import *
@@ -105,39 +108,133 @@ class Stock(Security):
 
         return chains
 
-    def get_Skew(self, T, rf, df: DataFrame):
+
+    def clean_Option_Data(self, df: DataFrame):
+        """
+        This function is a must called before creating a vol surface. It cleans dataset removing irrelevant data
+        based on the following conditions :
+        - trade must have occured within last business days
+        - spread must be smaller than expiry spread min + 4 * expiry spread std.
+        - volume / open interest has to be valid
+        - and obviously we remove out of the money data (Arbitrary conditions for now)
+        """
+
+        # Filter out options that haven't been traded in the last 5 business days
+        df['lastTradeDate'] = pd.to_datetime(df['lastTradeDate'])
+        five_days_ago = pd.Timestamp.now().normalize() - pd.offsets.BDay(5)
+        five_days_ago = five_days_ago.tz_localize('UTC')
+        df = df[df['lastTradeDate'] > five_days_ago]
+
+        # # Filter out options with high bid/ask spreads
+        df['spread'] = df['ask'] - df['bid']
+        spread_mean = df.groupby('Expiry')['spread'].mean()
+        spread_std = df.groupby('Expiry')['spread'].std()
+        merged = pd.concat([spread_mean, spread_std], axis=1).reset_index()
+        merged.columns = ['Expiry', 'mean', 'std']
+        df = df.merge(merged, on='Expiry')
+        df = df[df['spread'] < (df['mean'] + 4 * df['std'])]
+
+        df = df.drop(columns=['spread', 'mean', 'std'])
+
+        # Filter out options with zero or NaN volume
+        df = df[(df['volume'].notna()) & (df['volume'] != 0)]
+
+        # Filter out options with zero or NaN open interest
+        df = df[(df['openInterest'].notna()) & (df['openInterest'] != 0)]
+
+        # Filter out options that are in the money
+        df = df[df['inTheMoney'] == False]
+
+        # return only interesting cols
+        df = df[['lastPrice', 'strike', 'Expiry', 'OptionType',
+            'impliedVolatility', 'Dividend', 'Spot', 'Risk-Free Rate']]
+        return df
+
+
+    def get_Skew(self, T, df: DataFrame):
         # filter the input DataFrame to only contain data for the given `Expiry`
         df_filtered = df[df['Expiry'] == T]
 
         # filter the DF. We only use put data for now, for which implied vol is sufficient
-        # & only have a look at a certains range of strikes
-        spot = self.getPrice()
-        puts = df_filtered[(df_filtered['OptionType'] == 2) & (df_filtered['impliedVolatility'] > 0.0001) &
-                           ((df_filtered['strike'] > (2 / 3) * spot) & (df_filtered['strike'] < 450))].copy()
+        puts = df_filtered[(df_filtered['impliedVolatility'] > 0.0001)].copy()
 
-        puts['Risk-Free Rate'] = rf
-        puts['Dividend'] = self.getDiv()
-        puts['Spot'] = spot
         puts['imp'] = puts.apply(implied_volatility_row, axis=1)
 
         return puts
 
-    def build_Impl_Vol_Surface(self, rf, df: DataFrame, option_type):
-        options_filtered = df[df['OptionType'] == option_type]
+    def interpolate_Skew(self, df: DataFrame, method='linear'):
 
-        # filter the DataFrame to only contain 'Expiry' between 0.5 and 1.5
-        # arbitrary time for now, tbd
-        expiry_filtered = options_filtered[(options_filtered['Expiry'] >= 0.5) & (options_filtered['Expiry'] <= 1.5)]
+        # filter the DataFrame to only contain 'Expiry' between 0.5 and 2.5
+        expiry_filtered = df[(df['Expiry'] >= 0.5) & (df['Expiry'] <= 2.5)]
 
         # group the filtered DataFrame by 'Expiry' and apply the `get_Skew` function to each group
         expiries = expiry_filtered['Expiry'].unique()
-        skew_dfs = []
+        interpolations = []
         for T in expiries:
-            skew_df = self.get_Skew(T, rf, expiry_filtered)
-            skew_dfs.append(skew_df)
+            skew_df = self.get_Skew(T, expiry_filtered)
+            strike = skew_df['strike'].values
+            imp = skew_df['imp'].values
 
-        # concatenate the resulting DataFrames into a single DataFrame
-        skew_df = pd.concat(skew_dfs, ignore_index=True)
+            # Use interpolation on skews
+            interp_strike = np.linspace(strike[0], strike[-1], 1000)
+            if method == 'numpy':
+                interp = np.interp(interp_strike, strike, imp)
+            elif method == 'cubic':
+                interp = griddata(strike, imp, interp_strike, method='cubic')
 
-        return skew_df
+            # This seems to be the best method
+            else:
+                interp = griddata(strike, imp, interp_strike, method='linear')
 
+            df_interp = pd.DataFrame({'interpolation': interp})
+            df_interp['Expiry'] = T
+            df_interp['strike'] = interp_strike
+            interpolations.append(df_interp)
+
+        # concatenate
+        interpolations = pd.concat(interpolations, ignore_index=True)
+
+        return interpolations
+
+    def build_Impl_Vol_Surface(self, df: DataFrame, option_type: OptionTypes, method='linear'):
+        options_filtered = df[df['OptionType'] == option_type.value]
+
+        interp_skews = self.interpolate_Skew(options_filtered, method)
+
+        x = interp_skews['strike'].values
+        y = interp_skews['Expiry'].values
+        z = interp_skews['interpolation'].values
+
+        # define RBF parameters
+        rbf_type = 'linear'
+        epsilon = 2.0
+        rbf = Rbf(x, y, z, function=rbf_type, epsilon=epsilon)
+
+        # create a grid of x and y values for the plot
+        xi = np.linspace(min(x), max(x), 100)
+        yi = np.linspace(min(y), max(y), 100)
+        xi, yi = np.meshgrid(xi, yi)
+
+        # evaluate interpolated surface using RBF
+        zi = rbf(xi, yi)
+
+        return xi.flatten(), yi.flatten(), zi.flatten()
+
+    def plot_Vol_Surface(self, xi, yi, zi):
+
+        x = xi.reshape(100,100)
+        y = yi.reshape(100,100)
+        z = zi.reshape(100,100)
+
+        fig = plt.figure()
+
+        # plot the first surface
+        ax1 = fig.add_subplot(111, projection='3d')
+        ax1.set_title('Implied Volatility Surface')
+        surf1 = ax1.plot_surface(x, y, z, cmap='coolwarm', alpha=0.8)
+        ax1.set_xlabel('Strike')
+        ax1.set_ylabel('Expiry')
+        ax1.set_zlabel('Implied Volatility')
+        fig.colorbar(surf1, ax=ax1, shrink=0.5, aspect=5)
+
+        plt.show()

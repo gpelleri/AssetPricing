@@ -9,8 +9,8 @@ It currently allows to price EU & US options, as well as barrier option and digi
 I've made some work on a basic autocall pricing, but I do not have any test/reference data yet ...
 
 Volatility Models   
-I've made some progress on implementing a local volatility model but not on Heston.
-I've just finished a first version of plotting my own implied_volatility surface.  
-I still need to make progress on it, otherwise I'm afraid I'll have to use yfinance implied volatility directly to get it.  
+I've made some progress on implementing a local volatility model but not on Heston.  
+For very liquid stocks, I am now able to sucessfully draw my smooth Implied Volatility Surface.
+The second step is now to use Dupire's formula in combinaison with the surface to get the local Vol surface
 
 
