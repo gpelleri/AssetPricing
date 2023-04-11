@@ -56,7 +56,7 @@ if __name__ == '__main__':
     cleaned = apple.clean_Option_Data(chains)
 
     x,y,z = apple.build_Impl_Vol_Surface(cleaned, OptionTypes.EUROPEAN_PUT)
-    #apple.plot_Vol_Surface(x, y, z)
+    apple.plot_Vol_Surface(x, y, z)
 
     # example usage
     spot = apple.getPrice()
