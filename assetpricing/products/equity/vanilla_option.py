@@ -1,3 +1,5 @@
+import pandas as pd
+
 from assetpricing.models.black_scholes import *
 from assetpricing.models.montecarlo import *
 from assetpricing.products.equity.option import Option
@@ -54,7 +56,14 @@ if __name__ == '__main__':
     cleaned = apple.clean_Option_Data(chains)
 
     x,y,z = apple.build_Impl_Vol_Surface(cleaned, OptionTypes.EUROPEAN_PUT)
-    apple.plot_Vol_Surface(x,y,z)
+    #apple.plot_Vol_Surface(x, y, z)
 
+    # example usage
+    spot = apple.getPrice()
+    expiry = 1
+    imp = apple.get_implied_vol_from_surface(0.66 * spot, expiry, x, y, z)
+    print(imp)
+    local_vol = apple.local_volatility(0.66 * spot, expiry, x, y, z)
+    print(f"Local volatility at spot = {spot} and expiry = {expiry} is {local_vol:.4f}")
 
 

@@ -251,10 +251,10 @@ if __name__ == '__main__':
     r = 0.05
     q = 0.01
     expiry = 0.5
-    edf = Stock("EDF", True, 100, 0.25, q)
-    edf_call = BarrierOption("EDF-Call", 1e-6, edf, 1.3, 1.45, EquityBarrierTypes.UP_AND_OUT_CALL)
-    stock_prices = np.linspace(1.2, 1.6, 100)
-    values = edf_call.value(r, 1, 1, stock_prices)
+    edf = Stock("EDF", True, 100, 0.2, q)
+    edf_call = BarrierOption("EDF-Call", 1e-6, edf, 90, 120, EquityBarrierTypes.UP_AND_OUT_CALL)
+    stock_prices = np.linspace(50, 150, 100)
+    values = edf_call.value(r, 1, stock_prices)
 
     plt.figure(figsize=(8, 5))
     plt.plot(stock_prices, values)

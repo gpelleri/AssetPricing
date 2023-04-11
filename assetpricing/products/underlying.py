@@ -17,4 +17,4 @@ class Underlying:
         return self._underlying.getVol()
 
     def getDiv(self):
-        return self.getDiv()
+        return self._underlying.getDiv()

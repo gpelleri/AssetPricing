@@ -113,17 +113,11 @@ class Stock(Security):
         """
         This function is a must called before creating a vol surface. It cleans dataset removing irrelevant data
         based on the following conditions :
-        - trade must have occured within last business days
+        - trade must have occurred within last business days
         - spread must be smaller than expiry spread min + 4 * expiry spread std.
         - volume / open interest has to be valid
         - and obviously we remove out of the money data (Arbitrary conditions for now)
         """
-
-        # Filter out options that haven't been traded in the last 5 business days
-        df['lastTradeDate'] = pd.to_datetime(df['lastTradeDate'])
-        five_days_ago = pd.Timestamp.now().normalize() - pd.offsets.BDay(5)
-        five_days_ago = five_days_ago.tz_localize('UTC')
-        df = df[df['lastTradeDate'] > five_days_ago]
 
         # # Filter out options with high bid/ask spreads
         df['spread'] = df['ask'] - df['bid']
@@ -133,6 +127,12 @@ class Stock(Security):
         merged.columns = ['Expiry', 'mean', 'std']
         df = df.merge(merged, on='Expiry')
         df = df[df['spread'] < (df['mean'] + 4 * df['std'])]
+
+        # Filter out options that haven't been traded in the last 5 business days
+        df['lastTradeDate'] = pd.to_datetime(df['lastTradeDate'])
+        five_days_ago = pd.Timestamp.now().normalize() - pd.offsets.BDay(5)
+        five_days_ago = five_days_ago.tz_localize('UTC')
+        df = df[df['lastTradeDate'] > five_days_ago]
 
         df = df.drop(columns=['spread', 'mean', 'std'])
 
@@ -218,16 +218,10 @@ class Stock(Security):
         # evaluate interpolated surface using RBF
         zi = rbf(xi, yi)
 
-        return xi.flatten(), yi.flatten(), zi.flatten()
+        return xi, yi, zi
 
-    def plot_Vol_Surface(self, xi, yi, zi):
-
-        x = xi.reshape(100,100)
-        y = yi.reshape(100,100)
-        z = zi.reshape(100,100)
-
+    def plot_Vol_Surface(self, x, y, z):
         fig = plt.figure()
-
         # plot the first surface
         ax1 = fig.add_subplot(111, projection='3d')
         ax1.set_title('Implied Volatility Surface')
@@ -238,3 +232,29 @@ class Stock(Security):
         fig.colorbar(surf1, ax=ax1, shrink=0.5, aspect=5)
 
         plt.show()
+
+    def get_implied_vol_from_surface(self, S, expiry, xi, yi, zi):
+        implied_volatility_1d = zi.ravel()
+
+        implied_volatility_interp = griddata((xi.ravel(), yi.ravel()), implied_volatility_1d,
+                                             (S, expiry), method='linear')
+
+        return implied_volatility_interp
+
+    def local_volatility(self, spot, expiry, xi, yi, zi):
+        """
+        Not working : strikes variations are too small, therefore d_vol_d_kt is 0
+        Need to perform better interpolations
+        """
+        # compute the local volatility using Dupire's formula
+        delta_k = 0.1
+        vol1 = self.get_implied_vol_from_surface(spot - delta_k, expiry, xi, yi, zi)
+        vol2 = self.get_implied_vol_from_surface(spot, expiry, xi, yi, zi)
+        vol3 = self.get_implied_vol_from_surface(spot + delta_k, expiry, xi, yi, zi)
+
+        d_vol_d_k = (vol3 - 2 * vol2 + vol1) / (delta_k ** 2)
+        d_vol_d_t = vol2 ** 2 / 2 * (1 / spot ** 2) * d_vol_d_k
+        local_vol = np.sqrt(d_vol_d_t / expiry)
+        return local_vol
+
+

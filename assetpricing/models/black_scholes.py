@@ -47,7 +47,7 @@ class BlackScholes():
                              time_to_expiry,
                              dividendRate,
                              volatility,
-                             option_type)
+                             option_type.value)
 
                 return v
 

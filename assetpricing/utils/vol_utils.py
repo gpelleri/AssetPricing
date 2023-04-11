@@ -135,9 +135,3 @@ if __name__ == '__main__':
     val = bs_value(S1, K1, r, T1, q1, imp_vol, OptionTypes.EUROPEAN_PUT.value)
     print(val)
 
-    S2 = 409.39
-    K2 = 195
-    t2 = 0.55068
-    obs_2 = 1.09
-    imp_vol_2 = implied_volatility(obs_2, S2, K2, t2, r, 0, OptionTypes.EUROPEAN_CALL.value)
-    print(imp_vol_2)
