@@ -65,5 +65,3 @@ if __name__ == '__main__':
     print(imp)
     local_vol = apple.local_volatility(0.66 * spot, expiry, x, y, z)
     print(f"Local volatility at spot = {spot} and expiry = {expiry} is {local_vol:.4f}")
-
-

@@ -1,3 +1,4 @@
+import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import griddata, Rbf
 
@@ -150,8 +151,10 @@ class Stock(Security):
             'impliedVolatility', 'Dividend', 'Spot', 'Risk-Free Rate']]
         return df
 
-
     def get_Skew(self, T, df: DataFrame):
+        """
+        Extract Implied volatilty from options prices for a given maturity T
+        """
         # filter the input DataFrame to only contain data for the given `Expiry`
         df_filtered = df[df['Expiry'] == T]
 
@@ -163,6 +166,9 @@ class Stock(Security):
         return puts
 
     def interpolate_Skew(self, df: DataFrame, method='linear'):
+        """
+        Computes implied volatility interpolation based on implied volatilty extracted from options prices
+        """
 
         # filter the DataFrame to only contain 'Expiry' between 0.5 and 2.5
         expiry_filtered = df[(df['Expiry'] >= 0.5) & (df['Expiry'] <= 2.5)]
@@ -196,22 +202,53 @@ class Stock(Security):
 
         return interpolations
 
+    def interpolate_imp(self, df: DataFrame):
+        """
+        Uses yahoo finance implied volatilty values as source data
+        """
+
+        # filter the DataFrame to only contain 'Expiry' between 0.5 and 2.5
+        expiry_filtered = df[(df['Expiry'] >= 0.5) & (df['Expiry'] <= 2.5)]
+
+        # group the filtered DataFrame by 'Expiry' and apply the `get_Skew` function to each group
+        expiries = expiry_filtered['Expiry'].unique()
+        interpolations = []
+        for T in expiries:
+            skew_df = self.get_Skew(T, expiry_filtered)
+            strike = skew_df['strike'].values
+            imp = skew_df['impliedVolatility'].values
+
+            # Use interpolation on skews
+            interp_strike = np.linspace(strike[0], strike[-1], 1000)
+            interp = griddata(strike, imp, interp_strike, method='cubic')
+
+            df_interp = pd.DataFrame({'interpolation': interp})
+            df_interp['Expiry'] = T
+            df_interp['strike'] = interp_strike
+            interpolations.append(df_interp)
+
+        # concatenate
+        interpolations = pd.concat(interpolations, ignore_index=True)
+
+        return interpolations
+
     def build_Impl_Vol_Surface(self, df: DataFrame, option_type: OptionTypes, method='linear'):
         options_filtered = df[df['OptionType'] == option_type.value]
 
-        interp_skews = self.interpolate_Skew(options_filtered, method)
+        #interp_skews = self.interpolate_Skew(options_filtered, method)
+        interp_skews = self.interpolate_imp(options_filtered)
 
         x = interp_skews['strike'].values
         y = interp_skews['Expiry'].values
         z = interp_skews['interpolation'].values
 
         # define RBF parameters
-        rbf_type = 'linear'
+        rbf_type = 'cubic'
         epsilon = 2.0
         rbf = Rbf(x, y, z, function=rbf_type, epsilon=epsilon)
 
         # create a grid of x and y values for the plot
-        xi = np.linspace(min(x), max(x), 100)
+        xi = np.linspace(min(x), max(x), 1000)
         yi = np.linspace(min(y), max(y), 100)
         xi, yi = np.meshgrid(xi, yi)
 
@@ -243,8 +280,7 @@ class Stock(Security):
 
     def local_volatility(self, spot, expiry, xi, yi, zi):
         """
-        Not working : strikes variations are too small, therefore d_vol_d_kt is 0
-        Need to perform better interpolations
+        Not working : local vol is too small : bad interpolation on d_k
         """
         # compute the local volatility using Dupire's formula
         delta_k = 0.1
@@ -252,9 +288,14 @@ class Stock(Security):
         vol2 = self.get_implied_vol_from_surface(spot, expiry, xi, yi, zi)
         vol3 = self.get_implied_vol_from_surface(spot + delta_k, expiry, xi, yi, zi)
 
-        d_vol_d_k = (vol3 - 2 * vol2 + vol1) / (delta_k ** 2)
-        d_vol_d_t = vol2 ** 2 / 2 * (1 / spot ** 2) * d_vol_d_k
-        local_vol = np.sqrt(d_vol_d_t / expiry)
+        delta_t = 0.01
+        vol_dt = self.get_implied_vol_from_surface(spot, expiry - delta_t, xi, yi, zi)
+        vol_dt2 = self.get_implied_vol_from_surface(spot, expiry + delta_t, xi, yi, zi)
+        # Looks fine
+        d_vol_d_t = (vol_dt - vol_dt2) / (delta_t * 2)
+        # too small or even negative d_vol_d_k ??
+        d_vol_d_k = (vol1 - 2 * vol2 + vol3) / (delta_k ** 2)
+        local_vol = np.sqrt(2 * d_vol_d_t / (spot ** 2) * d_vol_d_k)
         return local_vol
 
 
