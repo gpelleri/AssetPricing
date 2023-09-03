@@ -19,12 +19,12 @@ class Derivative(Security):
         self._underlying = underlying  # Only stock implemented for now but this allows for more flexibility later
         self.deri_type = derivative_type  # equity option , swap, fx der etc ..
 
-    def getExpiry(self):
+    def get_expiry(self):
         return self._expiry
 
-    def getUnderlying(self):
+    def get_underlying(self):
         return self._underlying
 
-    def getDerivativeType(self):
+    def get_derivative_type(self):
         return self.deri_type
 

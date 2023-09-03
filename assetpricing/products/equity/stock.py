@@ -31,26 +31,26 @@ class Stock(Security):
             self._vol = vol  # given stock volatility
         else:
             self.ticker = name
-            self.downloadPrice(name)  # set price to current spot price
+            self.download_price(name)  # set price to current spot price
 
         self.div = div
         self._derivatives = None
 
-    def getName(self):
+    def get_name(self):
         return self.name
 
-    def getVol(self):
+    def get_vol(self):
         return self._vol
 
-    def getDiv(self):
+    def get_div(self):
         return self.div
 
-    def getDerivatives(self):
+    def get_derivatives(self):
         return self._derivatives
 
     # TODO probably poor naming
     # What if we want to extract past prices and not only spot ? -> out of scope atm
-    def downloadPrice(self, ticker):
+    def download_price(self, ticker):
         """
         Function to "pull" stock data from yahoo finance and set its price to current spot price
         :param ticker: name of ticker on yahoo finance
@@ -75,13 +75,13 @@ class Stock(Security):
     #         self._derivatives = []
     #     self._derivatives.append(option)
 
-    def __SetVol__(self, vol):
+    def __set_vol__(self, vol):
         """
         Private setter : must ONLY be called by derivatives class when extracting implied vol
         """
         self._vol = vol
 
-    def getOptionData(self):
+    def get_option_data(self):
         asset = yf.Ticker(self.ticker)
         expirations = asset.options
 
@@ -110,7 +110,7 @@ class Stock(Security):
         return chains
 
 
-    def clean_Option_Data(self, df: DataFrame):
+    def clean_option_data(self, df: DataFrame):
         """
         This function is a must called before creating a vol surface. It cleans dataset removing irrelevant data
         based on the following conditions :
@@ -151,7 +151,7 @@ class Stock(Security):
             'impliedVolatility', 'Dividend', 'Spot', 'Risk-Free Rate']]
         return df
 
-    def get_Skew(self, T, df: DataFrame):
+    def get_skew(self, T, df: DataFrame):
         """
         Extract Implied volatilty from options prices for a given maturity T
         """
@@ -165,7 +165,7 @@ class Stock(Security):
 
         return puts
 
-    def interpolate_Skew(self, df: DataFrame, method='linear'):
+    def interpolate_skew(self, df: DataFrame, method='linear'):
         """
         Computes implied volatility interpolation based on implied volatilty extracted from options prices
         """
@@ -177,7 +177,7 @@ class Stock(Security):
         expiries = expiry_filtered['Expiry'].unique()
         interpolations = []
         for T in expiries:
-            skew_df = self.get_Skew(T, expiry_filtered)
+            skew_df = self.get_skew(T, expiry_filtered)
             strike = skew_df['strike'].values
             imp = skew_df['imp'].values
 
@@ -214,7 +214,7 @@ class Stock(Security):
         expiries = expiry_filtered['Expiry'].unique()
         interpolations = []
         for T in expiries:
-            skew_df = self.get_Skew(T, expiry_filtered)
+            skew_df = self.get_skew(T, expiry_filtered)
             strike = skew_df['strike'].values
             imp = skew_df['impliedVolatility'].values
 
@@ -232,11 +232,11 @@ class Stock(Security):
 
         return interpolations
 
-    def build_Impl_Vol_Surface(self, df: DataFrame, option_type: OptionTypes, method='linear'):
+    def build_impl_vol_surface(self, df: DataFrame, option_type: OptionTypes, method='linear'):
         options_filtered = df[df['OptionType'] == option_type.value]
 
-        #interp_skews = self.interpolate_Skew(options_filtered, method)
-        interp_skews = self.interpolate_imp(options_filtered)
+        interp_skews = self.interpolate_skew(options_filtered, method)
+        #interp_skews = self.interpolate_imp(options_filtered)
 
         x = interp_skews['strike'].values
         y = interp_skews['Expiry'].values
@@ -248,7 +248,7 @@ class Stock(Security):
         rbf = Rbf(x, y, z, function=rbf_type, epsilon=epsilon)
 
         # create a grid of x and y values for the plot
-        xi = np.linspace(min(x), max(x), 1000)
+        xi = np.linspace(min(x), max(x), 100)
         yi = np.linspace(min(y), max(y), 100)
         xi, yi = np.meshgrid(xi, yi)
 
@@ -257,7 +257,7 @@ class Stock(Security):
 
         return xi, yi, zi
 
-    def plot_Vol_Surface(self, x, y, z):
+    def plot_vol_surface(self, x, y, z):
         fig = plt.figure()
         # plot the first surface
         ax1 = fig.add_subplot(111, projection='3d')
@@ -274,7 +274,7 @@ class Stock(Security):
         implied_volatility_1d = zi.ravel()
 
         implied_volatility_interp = griddata((xi.ravel(), yi.ravel()), implied_volatility_1d,
-                                             (S, expiry), method='linear')
+                                             (S, expiry), method='cubic')
 
         return implied_volatility_interp
 
@@ -298,4 +298,47 @@ class Stock(Security):
         local_vol = np.sqrt(2 * d_vol_d_t / (spot ** 2) * d_vol_d_k)
         return local_vol
 
+    def build_local_vol_surface(self, r, xi, yi, zi):
+        # Step 1: Calculate first derivatives
+        dzi_dx = np.gradient(zi, xi[0], axis=1)
 
+        # Calculate the gradients along the yi axis
+        dzi_dy = np.gradient(zi, yi[:, 0], axis=0)
+
+        # Calculate the second derivatives along the xi axis
+        d2zi_dxi2 = np.gradient(dzi_dx, xi[0], axis=1)
+
+        # Compute the local volatility using the discretized Dupire formula
+        #local_volatility = np.sqrt(2 * zi / (xi[0] ** 2 * d2zi_dxi2)
+        #                          - (dzi_dx ** 2) / xi[0] * zi)
+
+        local_volatility = np.sqrt((zi ** 2 + 2 * zi * yi * (dzi_dy + (r - self.get_div()) * xi * dzi_dx)) /
+                                   ((1 + xi * self.get_div() * np.sqrt(yi)) ** 2 + zi * xi ** 2 * yi *
+                                    (d2zi_dxi2 - self.get_div() * xi ** 2 * yi)))
+        return local_volatility
+
+    def build_local_vol_surface_v2(self, r, xi, yi, zi):
+        # Compute dzi_dx using central differences
+        dzi_dx = np.zeros_like(zi)
+        dzi_dx[:, 1:-1] = (zi[:, 2:] - zi[:, :-2]) / (xi[0, 2:] - xi[0, :-2])
+
+        # Compute dzi_dy using central differences
+        dzi_dy = np.zeros_like(zi)
+        dzi_dy[1:-1, :] = (zi[2:, :] - zi[:-2, :]) / (yi[2:, np.newaxis] - yi[:-2, np.newaxis])
+
+        # Compute d2zi_dxi2 using central differences
+        d2zi_dxi2 = np.zeros_like(zi)
+        d2zi_dxi2[:, 1:-1] = (zi[:, 2:] - 2 * zi[:, 1:-1] + zi[:, :-2]) / (xi[0, 2:] - xi[0, :-2]) ** 2
+
+        # Apply boundary conditions for dzi_dx and d2zi_dxi2
+        dzi_dx[:, 0] = (zi[:, 1] - zi[:, 0]) / (xi[0, 1] - xi[0, 0])  # Forward difference at boundary
+        dzi_dx[:, -1] = (zi[:, -1] - zi[:, -2]) / (xi[0, -1] - xi[0, -2])  # Backward difference at boundary
+        d2zi_dxi2[:, 0] = (zi[:, 2] - 2 * zi[:, 1] + zi[:, 0]) / (
+                    xi[0, 2] - xi[0, 0]) ** 2  # Forward difference at boundary
+        d2zi_dxi2[:, -1] = (zi[:, -3] - 2 * zi[:, -2] + zi[:, -1]) / (
+                    xi[0, -3] - xi[0, -1]) ** 2  # Backward difference at boundary
+
+        local_volatility = np.sqrt((zi ** 2 + 2 * zi * yi * (dzi_dy + (r - self.get_div()) * xi * dzi_dx)) /
+                                   ((1 + xi * self.get_div() * np.sqrt(yi)) ** 2 + zi * xi ** 2 * yi *
+                                    (d2zi_dxi2 - self.get_div() * xi ** 2 * yi)))
+        return local_volatility

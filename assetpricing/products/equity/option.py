@@ -11,10 +11,10 @@ class Option(Derivative):
         self.strike = strike
         self.option_type = None
 
-    def getStrike(self):
+    def get_strike(self):
         return self.strike
 
-    def getOptionType(self):
+    def get_option_type(self):
         return self.option_type
 
 

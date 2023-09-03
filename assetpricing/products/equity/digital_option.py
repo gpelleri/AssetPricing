@@ -18,35 +18,27 @@ class DigitalOption(Option):
         self.option_type = option_type
         self._barrier = barrier
 
-    def getOptionType(self):
+    def get_option_type(self):
         return self.option_type
 
-    def getBarrier(self):
+    def get_barrier(self):
         return self._barrier
 
     # Overload getStrike as digit have no strike but only a barrier
-    def getStrike(self):
+    def get_strike(self):
         return self._barrier
 
     def value(self, risk_free_rate, notional=1):
-        ul = self.getUnderlying()
+        ul = self.get_underlying()
 
-        if np.any(ul.getPrice() <= 0.0):
+        if np.any(ul.get_price() <= 0.0):
             raise Exception("Stock price must be greater than zero.")
 
-        if np.any(self.getExpiry() < 0.0):
+        if np.any(self.get_expiry() < 0.0):
             raise Exception("Time to expiry must be positive.")
 
-        ul = self.getUnderlying()
-
-        if np.any(ul.getPrice() <= 0.0):
-            raise Exception("Stock price must be greater than zero.")
-
-        if np.any(self.getExpiry() < 0.0):
-            raise Exception("Time to expiry must be positive.")
-
-        S = ul.getPrice()
-        sigma = ul.getVol()
+        S = ul.get_price()
+        sigma = ul.get_vol()
         # no strike on digital
         H = self._barrier
 
@@ -57,13 +49,13 @@ class DigitalOption(Option):
         d1 = d1 / sigma / np.sqrt(self.getExpiry())
         d2 = d1 - sigma * np.sqrt(self.getExpiry())
 
-        if self.getOptionType() == DigitalOptionTypes.CASH_OR_NOTHING_CALL:
+        if self.get_option_type() == DigitalOptionTypes.CASH_OR_NOTHING_CALL:
             v = np.exp(-r * self.getExpiry()) * norm.cdf(d2)
-        elif self.getOptionType() == DigitalOptionTypes.CASH_OR_NOTHING_PUT:
+        elif self.get_option_type() == DigitalOptionTypes.CASH_OR_NOTHING_PUT:
             v = np.exp(-r * self.getExpiry()) * norm.cdf(-d2)
-        elif self.getOptionType() == DigitalOptionTypes.ASSET_OR_NOTHING_CALL:
+        elif self.get_option_type() == DigitalOptionTypes.ASSET_OR_NOTHING_CALL:
             v = S * np.exp(-q * self.getExpiry()) * norm.cdf(d1)
-        elif self.getOptionType() == DigitalOptionTypes.ASSET_OR_NOTHING_PUT:
+        elif self.get_option_type() == DigitalOptionTypes.ASSET_OR_NOTHING_PUT:
             v = S * np.exp(-q * self.getExpiry()) * norm.cdf(-d1)
         else:
             raise Exception("Unknown Digital option type.")

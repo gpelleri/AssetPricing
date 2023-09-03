@@ -16,10 +16,10 @@ class BarrierOption(Option):
         self.barrier_type = barrier_type
         self._barrier = barrier
 
-    def getBarrierType(self):
+    def get_barrier_type(self):
         return self.barrier_type
 
-    def getBarrier(self):
+    def get_barrier(self):
         return self._barrier
 
     def value(self,
@@ -37,7 +37,7 @@ class BarrierOption(Option):
          :param notional: notion of the option
         """
 
-        ul = self.getUnderlying()
+        ul = self.get_underlying()
         if prices is None:
             stock_price = ul.getPrice()
         else:
@@ -46,7 +46,7 @@ class BarrierOption(Option):
         if np.any(stock_price <= 0.0):
             raise Exception("Stock price must be greater than zero.")
 
-        if self.getExpiry() < 0.0:
+        if self.get_expiry() < 0.0:
             raise Exception("Time to expiry must be greater than 0")
 
         if isinstance(stock_price, int):
@@ -59,8 +59,8 @@ class BarrierOption(Option):
 
         values = []
         for s in stock_prices:
-            v = value_bs(s, self.strike, self.getExpiry(), ul.getDiv(), ul.getVol(), risk_free_rate, self.getBarrier(),
-                         self.getBarrierType(), num_observations, notional)
+            v = value_bs(s, self.strike, self.get_expiry(), ul.get_div(), ul.get_vol(), risk_free_rate, self.get_barrier(),
+                         self.get_barrier_type(), num_observations, notional)
             values.append(v)
 
         if isinstance(stock_price, float):

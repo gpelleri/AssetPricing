@@ -12,13 +12,13 @@ class Security:
             self._id = uuid.uuid1()
             self.price = 0
 
-    def getName(self):
+    def get_name(self):
         return self.name
 
-    def getType(self):
+    def get_type(self):
         return self.type
 
-    def getPrice(self):
+    def get_price(self):
         """
         Return SECURITY PRICE ! This doesn't return underlying price in case of a derivatives !
         :return: security price

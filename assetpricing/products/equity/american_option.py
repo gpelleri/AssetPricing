@@ -13,25 +13,25 @@ class AmericanOption(Option):
         super().__init__(name, expiry, underlying, strike)
         self.option_type = option_type
 
-    def getOptionType(self):
+    def get_option_type(self):
         return self.option_type
 
     def value(self,
               risk_free_rate: float,
               model):
 
-        ul = self.getUnderlying()
+        ul = self.get_underlying()
 
-        if np.any(ul.getPrice() <= 0.0):
+        if np.any(ul.get_price() <= 0.0):
             raise Exception("Stock price must be greater than zero.")
 
-        if np.any(self.getExpiry() < 0.0):
+        if np.any(self.get_expiry() < 0.0):
             raise Exception("Time to expiry must be positive.")
 
         if isinstance(model, BlackScholes):
 
-            value = model.value(ul.getPrice(), self.getStrike(), risk_free_rate, self.getExpiry(), ul.getDiv(),
-                                ul.getVol(), self.getOptionType())
+            value = model.value(ul.get_price(), self.get_strike(), risk_free_rate, self.get_expiry(), ul.get_div(),
+                                ul.get_vol(), self.get_option_type())
 
         else:
             raise Exception("Model : " + model + " isn't implemented")

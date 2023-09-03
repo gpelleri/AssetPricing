@@ -7,14 +7,14 @@ from assetpricing.products.equity.stock import Stock
 class Underlying:
     def __init__(self, option: Stock):
 
-        self._type = option.getType()
+        self._type = option.get_type()
         self._underlying = option
 
-    def getPrice(self):
-        return self._underlying.getPrice()
+    def get_price(self):
+        return self._underlying.get_price()
 
-    def getVol(self):
-        return self._underlying.getVol()
+    def get_vol(self):
+        return self._underlying.get_vol()
 
-    def getDiv(self):
-        return self._underlying.getDiv()
+    def get_div(self):
+        return self._underlying.get_div()
