@@ -102,13 +102,11 @@ class Stock(Security):
             chains = pd.concat([chains, chain])
 
         chains["daysToExpiration"] = (chains.expiration - dt.datetime.today()).dt.days + 1
-
         chains["Expiry"] = chains["daysToExpiration"] / 365
         fct = lambda x: OptionTypes.EUROPEAN_CALL.value if x == "call" else OptionTypes.EUROPEAN_PUT.value
         chains["OptionType"] = chains["optionType"].apply(fct)
 
         return chains
-
 
     def clean_option_data(self, df: DataFrame):
         """
@@ -133,7 +131,7 @@ class Stock(Security):
         df['lastTradeDate'] = pd.to_datetime(df['lastTradeDate'])
         five_days_ago = pd.Timestamp.now().normalize() - pd.offsets.BDay(5)
         five_days_ago = five_days_ago.tz_localize('UTC')
-        df = df[df['lastTradeDate'] > five_days_ago]
+        #df = df[df['lastTradeDate'] > five_days_ago]
 
         df = df.drop(columns=['spread', 'mean', 'std'])
 
@@ -162,12 +160,11 @@ class Stock(Security):
         puts = df_filtered[(df_filtered['impliedVolatility'] > 0.0001)].copy()
 
         puts['imp'] = puts.apply(implied_volatility_row, axis=1)
-
         return puts
 
     def interpolate_skew(self, df: DataFrame, method='linear'):
         """
-        Computes implied volatility interpolation based on implied volatilty extracted from options prices
+        Computes implied volatility interpolation based on implied volatility extracted from options prices
         """
 
         # filter the DataFrame to only contain 'Expiry' between 0.5 and 2.5
